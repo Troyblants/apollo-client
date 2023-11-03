@@ -8,7 +8,6 @@ import { equal } from "@wry/equality";
 import type { ApolloLink, FetchResult } from "../link/core/index.js";
 import { execute } from "../link/core/index.js";
 import {
-  compact,
   hasDirectives,
   isExecutionPatchIncrementalResult,
   isExecutionPatchResult,
@@ -63,7 +62,6 @@ import type {
   InternalRefetchQueriesOptions,
   InternalRefetchQueriesResult,
   InternalRefetchQueriesMap,
-  DefaultContext,
 } from "./types.js";
 import { LocalState } from "./LocalState.js";
 
@@ -108,7 +106,6 @@ export class QueryManager<TStore> {
   public readonly assumeImmutableResults: boolean;
   public readonly documentTransform: DocumentTransform;
   public readonly ssrMode: boolean;
-  public readonly defaultContext: Partial<DefaultContext>;
 
   private queryDeduplication: boolean;
   private clientAwareness: Record<string, string> = {};
@@ -140,7 +137,6 @@ export class QueryManager<TStore> {
     clientAwareness = {},
     localState,
     assumeImmutableResults = !!cache.assumeImmutableResults,
-    defaultContext,
   }: {
     cache: ApolloCache<TStore>;
     link: ApolloLink;
@@ -152,7 +148,6 @@ export class QueryManager<TStore> {
     clientAwareness?: Record<string, string>;
     localState?: LocalState<TStore>;
     assumeImmutableResults?: boolean;
-    defaultContext?: Partial<DefaultContext>;
   }) {
     const defaultDocumentTransform = new DocumentTransform(
       (document) => this.cache.transformDocument(document),
@@ -177,7 +172,6 @@ export class QueryManager<TStore> {
           // selections and fragments from the fragment registry.
           .concat(defaultDocumentTransform)
       : defaultDocumentTransform;
-    this.defaultContext = defaultContext || Object.create(null);
 
     if ((this.onBroadcast = onBroadcast)) {
       this.mutationStore = Object.create(null);
@@ -1160,9 +1154,7 @@ export class QueryManager<TStore> {
     return asyncMap(
       this.getObservableFromLink(
         linkDocument,
-        // explicitly a shallow merge so any class instances etc. a user might
-        // put in here will not be merged into each other.
-        compact(this.defaultContext, options.context),
+        options.context,
         options.variables
       ),
 
